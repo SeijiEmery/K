@@ -1,3 +1,6 @@
 [submodule "ext/OpenEcs"]
 	path = ext/OpenEcs
 	url = https://github.com/Gronis/OpenEcs.git
+[submodule "ext/glm"]
+	path = ext/glm
+	url = https://github.com/g-truc/glm.git
