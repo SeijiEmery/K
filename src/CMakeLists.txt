@@ -7,3 +7,5 @@ add_library(boost INTERFACE IMPORTED)
 set_property(TARGET boost PROPERTY
     INTERFACE_INCLUDE_DIRECTORIES ${Boost_INCLUDE_DIR})
 
+add_subdirectory(app ../build/app)
+add_subdirectory(../demos/window_test ../build/window_test)
