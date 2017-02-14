@@ -1,6 +1,9 @@
 
 project(k::app VERSION 0.1 LANGUAGES CXX)
 
+# find_package(GLM REQUIRED)
+# include_directories(${GLM_INCLUDE_DIRS})
+
 add_library(kapp
     src/app_instance.cxx
     src/app_device_manager.cxx

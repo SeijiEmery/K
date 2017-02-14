@@ -7,5 +7,8 @@ add_library(boost INTERFACE IMPORTED)
 set_property(TARGET boost PROPERTY
     INTERFACE_INCLUDE_DIRECTORIES ${Boost_INCLUDE_DIR})
 
+find_package(GLM REQUIRED)
+include_directories(${GLM_INCLUDE_DIRS})
+
 add_subdirectory(app ../build/app)
 add_subdirectory(../demos/window_test ../build/window_test)

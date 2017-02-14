@@ -12,10 +12,14 @@ struct Screen {
     bool        fullscreen;
 };
 
+class WindowImpl;
+class WindowManagerImpl;
+
 // Buffered, threadsafe window handle, providing
 // access to window properties.
 class Window {
-
+    std::unique_ptr<WindowImpl> impl;
+public:
     // Constructs a backing window reference from this window
     void create ();
 
@@ -50,12 +54,14 @@ class Window {
     void create ();
     void destroy ();
 
-    Window ();
+    Window (void*);
     virtual ~Window ();
 };
 
 // Window manager object owned by AppInstance.
 class WindowManager {
+    std::unique_ptr<WindowManagerImpl> impl;
+public:
     // Create / get window with the specified name.
     Window& operator[] (const std::string& name);
 
@@ -70,6 +76,8 @@ class WindowManager {
 
     static const Screen* largestFullscreen (ScreenList);
     static const Screen* largestWindowed   (ScreenList);
+
+    WindowManager (void*);
 };
 
 }; // namespace app
