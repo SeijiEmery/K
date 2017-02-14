@@ -1,0 +1,3 @@
+[submodule "ext/OpenEcs"]
+	path = ext/OpenEcs
+	url = https://github.com/Gronis/OpenEcs.git
