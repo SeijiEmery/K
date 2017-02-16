@@ -111,6 +111,17 @@ class CommandBuffer {
     const T* read () {
         return buffer->read<T>();
     }
+
+    // Base Visitor CRTP class template. Inherit from this to provide a default visit() method.
+    template <typename Self>
+    struct Visitor {
+        typedef CommandType CommandType;
+        typedef CommandBuffer<CommandType> CommandBuffer;
+
+        Self& visit (CommandBuffer& buffer) {
+            return visit(*static_cast<Self*>(this), buffer), *static_cast<Self*>(this);
+        }
+    };
 };
 
 //
@@ -170,7 +181,6 @@ void visit (CommandBuffer<CMD> cb, Visitor& visitor) { \
     case EV: visitor.visit(*cb.read<T>); break;
 
 #define END_COMMAND_VISIT_IMPL END_COMMAND_DISPATCH_IMPL
-
 
 //
 // Macro usage / example:
@@ -241,6 +251,33 @@ struct MyVisitor {
 void visitExample (CommandBuffer<kExampleEvent>& events) {
     MyVisitor visitor { ... };
     visitor.visit(events);
+}
+
+// OR
+
+struct MyVisitor : public CommandBuffer<kExampleEvent>::Visitor<MyVisitor> {
+    ...
+    MyVisitor (...) : ... {}
+
+    void visit (ExampleEvent::Foo& ev) { ... }
+    void visit (ExampleEvent::Bar& ev) { ... }
+    void visit (ExampleEvent::Baz& ev) { ... }
+
+    // Automatic visit() method + typedefs for:
+    // – Command        (enum class type)
+    // – CommandBuffer  (CommandBuffer<Command>)
+}
+
+void visitExample (MyVisitor::CommandBuffer& events) {
+    MyVisitor visitor { ... };
+    visitor.visit(events);
+}
+
+// OR
+
+void visitExample (CommandBuffer<MyVisitor::Command>& events) {
+    MyVisitor visitor { ... };
+    visitor.visit(events);   
 }
 
 #endif
