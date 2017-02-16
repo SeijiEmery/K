@@ -16,6 +16,9 @@ class ChunkedForwardList {
                 nullptr;
         }
 
+        void rewind () { head = 0; }
+        void clear ()  { head = 0; memcpy(static_cast<void*>(&chunk->data[0]), 0, SIZE); }
+
         template <typename T>
         void write (const T& value, Chunk*& head) {
             static_assert(sizeof(T) < SIZE);
@@ -49,8 +52,14 @@ class ChunkedForwardList {
     void resetHead () {
         head = &first;
         for (auto seg = head; seg; seg = seg->next)
-            seg->head = 0;
+            seg->rewind();
     }
+    void clear () {
+        head = &first;
+        for (auto seg = head; seg; seg = seg->next)
+            seg->clear();
+    }
+
     template <typename T>
     void write (const T& value) {
         head->write(value, head);
@@ -86,7 +95,8 @@ class CommandBuffer {
     CommandBuffer (const CommandBuffer& cb) : buffer(new decltype(buffer)(cb.buffer)) {}
     virtual ~CommandBuffer () {}
 
-    void clear () { buffer->resetHead(); }
+    void rewindReadHead () { buffer->resetHead(); }
+    void clear () { buffer->clear(); }
 
     template <typename T>
     void write (CommandType command, const T& data) {
@@ -118,6 +128,7 @@ class CommandBuffer {
 //
 #define BEGIN_COMMAND_DISPATCH_IMPL(CMD) \
 void dispatch (CommandBuffer<CMD>& buffer) {\
+    cb.rewindReadHead(); \
     bool done = false; \
     E command; \
     while (!done) { \
@@ -125,7 +136,7 @@ void dispatch (CommandBuffer<CMD>& buffer) {\
             case CMD::NONE: atEnd = true; break;
 
 // End CommandBuffer dispatch method
-#define END_COMMAND_DISPATCH_IMPL(CMD) \
+#define END_COMMAND_DISPATCH_IMPL \
             default: static_assert(0, "Missing command(s)"); \
         } \
     } \
@@ -133,7 +144,7 @@ void dispatch (CommandBuffer<CMD>& buffer) {\
 
 // "Connect" an enum value (must be an element of CMD), and command structure type
 // (must have a void execute() method). Must occur between BEGIN / END _COMAND_DISPATCH_IMPL.
-#define DISPATCH_COMMAND(E,T) \
+#define DISPATCH_COMMAND(EV,T) \
     case EV: cb.read<T>->execute(); break;
 
 
@@ -145,11 +156,31 @@ auto& write (CommandBuffer<decltype(E)>& buffer, const T& data) { \
     return buffer.write(E, data), buffer; \
 }
 
+#define BEGIN_COMMAND_VISIT_IMPL(CMD) \
+template <typename Visitor> \
+void visit (CommandBuffer<CMD> cb, Visitor& visitor) { \
+    cb.rewindReadHead(); \
+    bool done = false; \
+    E command; \
+    while (!done) { \
+        switch (CMD command = buffer.readNext()) { \
+            case CMD::NONE: atEnd = true; break;
+
+#define DISPATCH_VISITOR(EV,T) \
+    case EV: visitor.visit(*cb.read<T>); break;
+
+#define END_COMMAND_VISIT_IMPL END_COMMAND_DISPATCH_IMPL
+
+
 //
 // Macro usage / example:
 //
 
 #if 0
+
+//
+// Command Example
+//
 
 // Command definition (header file)
 enum class kExampleCmd { NONE = 0, FOO, BAR, BAZ };
@@ -174,4 +205,43 @@ void ExampleCommand::Foo::execute () { ... }
 void ExampleCommand::Bar::execute () { ... }
 void ExampleCommand::Baz::execute () { ... }
 
+//
+// Event Example
+//
+
+// Event definition (header file)
+enum class kExampleEvent { NONE = 0, FOO, BAR, BAZ };
+namespace ExampleEvent {
+    struct Foo { ... };
+    struct Bar { ... };
+    struct Baz { ... };
+}
+
+BEGIN_COMMAND_VISIT_IMPL(kExampleEvent)
+    DISPATCH_VISITOR(kExampleEvent::FOO, ExampleEvent::Foo)
+    DISPATCH_VISITOR(kExampleEvent::BAR, ExampleEvent::Bar)
+    DISPATCH_VISITOR(kExampleEvent::BAZ, ExampleEvent::Baz)
+END_COMMAND_VISIT_IMPL
+
+// Event usage (source file)
+
+struct MyVisitor {
+    ...
+    MyVisitor (...) : ... {}
+
+    void visit (ExampleEvent::Foo& ev) { ... }
+    void visit (ExampleEvent::Bar& ev) { ... }
+    void visit (ExampleEvent::Baz& ev) { ... }
+
+    MyVisitor& visit (CommandBuffer<kExampleEvent>& events) {
+        return visit(events, *this), *this;
+    }
+}
+
+void visitExample (CommandBuffer<kExampleEvent>& events) {
+    MyVisitor visitor { ... };
+    visitor.visit(events);
+}
+
 #endif
+
