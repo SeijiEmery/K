@@ -125,26 +125,56 @@ class CommandBuffer {
 };
 
 //
-// Macros to define user command buffers. See usage at end.
+// Macros to define user command buffer operations + linkage. See usage at end.
 //
-// If implemented, defines write(CommandBuffer<K>, const V& commandValue),
-// and dispatch(CommandBuffer<K>), which calls V::execute() for all matching V types.
+// To implement a Command or Event data structure:
+// – define an enum class w/ unique entries for all values, starting at 1.
+// – must define a special value of NONE = 0, as mentioned below
+// – define structs w/ command / event data
+// – commands must have a void execute () method
 //
+// map the struct types to enum values w/:
+// – DEFINE_COMMAND(E::VALUE, T) for commands / events
+// – DISPATCH_COMMAND(E::VALUE, T) inside a BEGIN / END block for commands
+// – DISPATCH_VISITOR(E::VALUE, T) inside a BEGIN / END block for events
+//
+// To visit events:
+// – define a Visitor struct inheriting from CommandBuffer<E>::Visitor<YourVisitorClass>.
+// – define 'void visit (T&)' methods for all event types. Missing methods => compile errors.
+// – invoke your visitor's methods w/ <yourVisitorInstance>.visit(CommandBuffer<E>& instance)
+//
+// Note:
+// – structs may double as both Commands and Events
+// – structs may be reused as backing data type for multiple different command buffers;
+//   enum classes cannot.
+// – any type can be used to implement events: existing classes / structs, int, etc.
+// – However, using non-POD types will result in undefined behavior atm; values are assigned
+//   to / from for single access, but if a CommandBuffer is copied it does so via memcpy().
+// – Implementing proper copy-construction for command elements would needlessly complicate
+//   the structure of CommandBuffer, so please use POD types + non-owning pointers to implement
+//   commands + events atm. (note: would memcpying std::weak_ptr<T> work?).
+//
+// See examples at the end for exact usage and expected patterns.
+//
+
 
 // Defines a CommandBuffer dispatch method for a given CMD (enum class) type.
 //
-// CMD *must* define CMD::NONE = 0, which should not overlap with any other value.
-// Note: this is a special value and defining DEFINE_COMMAND(CMD::NONE, ...) 
-// or DISPATCH_COMMAND(CMD::NONE, ...) is illegal.
+// CMD_ENUM *must* define CMD_ENUM::NONE = 0, which should not overlap with any other value.
+// – CMD_ENUM::NONE is a special value.
+// – It is illegal to define operations on CMD_ENUM::NONE, eg.
+//      DEFINE_COMMAND(<CMD_ENUM>::NONE, ...)
+//  or  DISPATCH_COMMAND(<CMD_ENUM>::NONE, ...)
+//  or  DISPATCH_VISITOR(<CMD_ENUM>::NONE, ...)
 //
-#define BEGIN_COMMAND_DISPATCH_IMPL(CMD) \
+#define BEGIN_COMMAND_DISPATCH_IMPL(CMD_ENUM) \
 void dispatch (CommandBuffer<CMD>& buffer) {\
     cb.rewindReadHead(); \
     bool done = false; \
     E command; \
     while (!done) { \
         switch (CMD command = buffer.readNext()) { \
-            case CMD::NONE: atEnd = true; break;
+            case CMD::NONE: done = true; break;
 
 // End CommandBuffer dispatch method
 #define END_COMMAND_DISPATCH_IMPL \
@@ -155,30 +185,30 @@ void dispatch (CommandBuffer<CMD>& buffer) {\
 
 // "Connect" an enum value (must be an element of CMD), and command structure type
 // (must have a void execute() method). Must occur between BEGIN / END _COMAND_DISPATCH_IMPL.
-#define DISPATCH_COMMAND(EV,T) \
-    case EV: cb.read<T>->execute(); break;
+#define DISPATCH_COMMAND(CMD,T) \
+    case CMD: cb.read<T>->execute(); break;
 
 
 // Defines a CommandBuffer write method, "Connecting" an enum value and command structure type 
 // (must have a void execute() method). This is a freestanding declaration, bust must be matched
 // with a DISPATCH_COMMAND statement between BEGIN / END _COMMAND_DISPATCH_IMPL statements.
-#define DEFINE_COMMAND(E,T) \
+#define DEFINE_COMMAND(CMD,T) \
 auto& write (CommandBuffer<decltype(E)>& buffer, const T& data) { \
-    return buffer.write(E, data), buffer; \
+    return buffer.write(CMD, data), buffer; \
 }
 
-#define BEGIN_COMMAND_VISIT_IMPL(CMD) \
+#define BEGIN_COMMAND_VISIT_IMPL(CMD_ENUM) \
 template <typename Visitor> \
-void visit (CommandBuffer<CMD> cb, Visitor& visitor) { \
+void visit (CommandBuffer<CMD_ENUM> cb, Visitor& visitor) { \
     cb.rewindReadHead(); \
     bool done = false; \
     E command; \
     while (!done) { \
-        switch (CMD command = buffer.readNext()) { \
-            case CMD::NONE: atEnd = true; break;
+        switch (CMD_ENUM command = buffer.readNext()) { \
+            case CMD_ENUM::NONE: done = true; break;
 
-#define DISPATCH_VISITOR(EV,T) \
-    case EV: visitor.visit(*cb.read<T>); break;
+#define DISPATCH_VISITOR(CMD,T) \
+    case CMD: visitor.visit(*cb.read<T>); break;
 
 #define END_COMMAND_VISIT_IMPL END_COMMAND_DISPATCH_IMPL
 
@@ -197,8 +227,13 @@ enum class kExampleCmd { NONE = 0, FOO, BAR, BAZ };
 namespace ExampleCommand {
     struct Foo { ... void execute (); };
     struct Bar { ... void execute (); };
-    struct Baz { ... void execute(); };
+    struct Baz { ... void execute();  };
+    typedef CommandBuffer<kExampleCmd> CommandBuffer;
 }
+
+DEFINE_COMMAND(kExampleCmd::FOO, ExampleCommand::Foo)
+DEFINE_COMMAND(kExampleCmd::BAR, ExampleCommand::Bar)
+DEFINE_COMMAND(kExampleCmd::BAZ, ExampleCommand::Baz)
 
 BEGIN_COMMAND_DISPATCH_IMPL(kExampleCmd)
     DISPATCH_COMMAND(kExampleCmd::FOO, ExampleCommand::Foo)
@@ -206,14 +241,25 @@ BEGIN_COMMAND_DISPATCH_IMPL(kExampleCmd)
     DISPATCH_COMMAND(kExampleCmd::BAZ, ExampleCommand::Baz)
 END_COMMAND_DISPATCH_IMPL
 
-DEFINE_COMMAND(kExampleCmd::FOO, ExampleCommand::Foo)
-DEFINE_COMMAND(kExampleCmd::BAR, ExampleCommand::Bar)
-DEFINE_COMMAND(kExampleCmd::BAZ, ExampleCommand::Baz)
 
 // Command implementation (source file)
 void ExampleCommand::Foo::execute () { ... }
 void ExampleCommand::Bar::execute () { ... }
 void ExampleCommand::Baz::execute () { ... }
+
+//
+// Event usage:
+//
+
+void pushEvents (ExampleCommand::CommandBuffer& cb) {
+    cb.write(ExampleCommand::Foo{ ... });
+    cb.write(ExampleCommand::Foo{ ... });
+    cb.write(ExampleCommand::Baz{ ... });
+}
+void runEvents (ExampleCommand::CommandBuffer& cb) {
+    dispatch(cb);
+}
+
 
 //
 // Event Example
@@ -225,7 +271,12 @@ namespace ExampleEvent {
     struct Foo { ... };
     struct Bar { ... };
     struct Baz { ... };
+    typedef CommandBuffer<kExampleEvent> CommandBuffer;
 }
+
+DEFINE_COMMAND(kExampleEvent::FOO, ExampleEvent::Foo)
+DEFINE_COMMAND(kExampleEvent::BAR, ExampleEvent::Bar)
+DEFINE_COMMAND(kExampleEvent::BAZ, ExampleEvent::Baz)
 
 BEGIN_COMMAND_VISIT_IMPL(kExampleEvent)
     DISPATCH_VISITOR(kExampleEvent::FOO, ExampleEvent::Foo)
@@ -243,19 +294,19 @@ struct MyVisitor {
     void visit (ExampleEvent::Bar& ev) { ... }
     void visit (ExampleEvent::Baz& ev) { ... }
 
-    MyVisitor& visit (CommandBuffer<kExampleEvent>& events) {
+    MyVisitor& visit (ExampleEvent::CommandBuffer& events) {
         return visit(events, *this), *this;
     }
-}
+};
 
-void visitExample (CommandBuffer<kExampleEvent>& events) {
+void visitExample (ExampleEvent::CommandBuffer& events) {
     MyVisitor visitor { ... };
     visitor.visit(events);
 }
 
 // OR
 
-struct MyVisitor : public CommandBuffer<kExampleEvent>::Visitor<MyVisitor> {
+struct MyVisitor : public ExampleEvent::CommandBuffer::Visitor<MyVisitor> {
     ...
     MyVisitor (...) : ... {}
 
@@ -264,9 +315,9 @@ struct MyVisitor : public CommandBuffer<kExampleEvent>::Visitor<MyVisitor> {
     void visit (ExampleEvent::Baz& ev) { ... }
 
     // Automatic visit() method + typedefs for:
-    // – Command        (enum class type)
+    // – CommandType    (enum class type)
     // – CommandBuffer  (CommandBuffer<Command>)
-}
+};
 
 void visitExample (MyVisitor::CommandBuffer& events) {
     MyVisitor visitor { ... };
@@ -275,7 +326,7 @@ void visitExample (MyVisitor::CommandBuffer& events) {
 
 // OR
 
-void visitExample (CommandBuffer<MyVisitor::Command>& events) {
+void visitExample (CommandBuffer<MyVisitor::CommandType>& events) {
     MyVisitor visitor { ... };
     visitor.visit(events);   
 }
