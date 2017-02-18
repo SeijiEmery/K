@@ -37,16 +37,13 @@ FEATURE GOALS:
     – Boost
     – glm
     – OpenECS   (https://github.com/Gronis/OpenEcs)
-    – OpenMesh
+    – Assimp 	 (https://github.com/assimp/assimp)
     – nanovg / nanogui
     – box2d
     – stb libraries (ofc)
     – googletest (unit tests) + haiyai (benchmarking)
     – expected  (https://github.com/ptal/expected)
     – etc.
-– XML-based asset + scene format (have specs; planning to implement via SAX parser;
-  may use boost spirit and write my own b/c most suck and I'm using a restricted
-  subset w/ focus on tag attributes, not deeply nested tags to store data -- human
-  readability is key people...)
+– XML-based asset + scene format; planning to use a SAX parser, possibly D-based.
 – More data-oriented (in general). Gamepads + key bindings should be user configurable,
   not hardcoded, etc.

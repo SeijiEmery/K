@@ -4,3 +4,33 @@
 [submodule "ext/glm"]
 	path = ext/glm
 	url = https://github.com/g-truc/glm.git
+[submodule "ext/concurrentqueue"]
+	path = ext/concurrentqueue
+	url = https://github.com/cameron314/concurrentqueue.git
+[submodule "ext/glfw"]
+	path = ext/glfw
+	url = https://github.com/glfw/glfw.git
+[submodule "ext/googletest"]
+	path = ext/googletest
+	url = https://github.com/google/googletest
+[submodule "ext/haiyai"]
+	path = ext/haiyai
+	url = https://github.com/nickbruun/hayai
+[submodule "nanovg"]
+	path = nanovg
+	url = https://github.com/memononen/nanovg
+[submodule "ext/nanogui"]
+	path = ext/nanogui
+	url = https://github.com/wjakob/nanogui
+[submodule "ext/assimp"]
+	path = ext/assimp
+	url = https://github.com/assimp/assimp
+[submodule "ext/nanovg"]
+	path = ext/nanovg
+	url = https://github.com/memononen/nanovg
+[submodule "ext/stb"]
+	path = ext/stb
+	url = https://github.com/nothings/stb.git
+[submodule "ext/expected"]
+	path = ext/expected
+	url = https://github.com/ptal/expected.git
