@@ -34,3 +34,6 @@
 [submodule "ext/expected"]
 	path = ext/expected
 	url = https://github.com/ptal/expected.git
+[submodule "ext/readerwriterqueue"]
+	path = ext/readerwriterqueue
+	url = https://github.com/cameron314/readerwriterqueue.git
