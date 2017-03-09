@@ -12,6 +12,8 @@
 //   T => set T, F => set F, (T & F) or !(T | F) => no change.
 //
 enum class ModuleFlags {
+    NONE = 0,
+    
     // Control whether the onFrame() method is called (or paused).
     RUN_ON_FRAME = 1 << 1, PAUSE_ON_FRAME = 1 << 2,
 
@@ -52,7 +54,7 @@ struct ModuleReference {
     //   essentially what it is (plus a bunch of methods for controlling + observing module state).
     // – Modules MAY be running on their own threads. For safety, wrap any calls in getThread()->dispatch().
     //
-    // Returns nullptr if the module is not currently loaded.
+    // Returns nullptr if the module is not currently loaded. Not callable from const.
     //
     IModule* getPtr ();
 
@@ -75,7 +77,14 @@ struct ModuleReference {
     // Force module to close; returns true iff module was running (and is now closed).
     bool close  ();
 
-    std::weak_ptr<KThread> getThread ();
+    template <typename T>
+    void dispatchOnLocalThread (std::function<void(T&)> callback) {
+        if (!*this) throw std::runtime_error("Null module reference");
+        dispatchOnLocalThread([callback,&this](){ callback(getAs<T>()); });
+    }
+
+    // Run code on the target module's internal thread. Requires
+    void dispatchOnLocalThread (std::function<void()>);
 
     // Event listener methods. These have the following signature: (caller, callback).
     // A reference to the caller (an IModule) is required for lifetime management.
@@ -88,12 +97,12 @@ struct ModuleReference {
 
     // Called on each flag (run state) change. ChangedFlag consists of a single flag only.
     void onFlagChanged (IModule& caller, std::function<void(ModuleReference&, ModuleFlags changedFlag)>);
-private:
+protected:
     class Impl;
     ModuleReference (Impl* impl) : impl(impl) {}
     ModuleReference (const ModuleReference&) = delete;
     ModuleReference& operator= (const ModuleReference&) = delete;
-    ~ModuleReference () = default;
+    virtual ~ModuleReference () = default;
     std::unique_ptr<Impl> impl;
 };
 typedef std::shared_ptr<ModuleReference> ModuleRef;
@@ -101,16 +110,27 @@ typedef std::shared_ptr<ModuleReference> ModuleRef;
 
 // 
 struct ModuleManager {
-    void registerInterface (IModule& module, const std::string& name, void* interface, ThreadMask targetThread = ThreadMask::ANY);
-    bool acquireInterface  (const std::string& name, std::function<void(void*)> callback);
+    // void registerInterface (IModule& module, const std::string& name, void* interface, ThreadMask targetThread = ThreadMask::ANY);
+    // bool acquireInterface  (const std::string& name, std::function<void(void*)> callback);
 
     // Try to load module at the given path, and/or reload module at that path (iff reload true).
     // Returns a null reference if module not loaded / reloaded.
     ModuleRef& loadModule (const std::string& path, bool reload = false, ModuleFlags flags = ModuleFlags::DEFAULT);
 
+    // Load module statically.
+    ModuleRef& loadModule (IModule* module, ModuleFlags flags = ModuleFlags::DEFAULT);
+
+    template <typename Module>
+    ModuleRef& createModule (ModuleFlags flags = ModuleFlags::DEFAULT) {
+        return loadModule (new Module(), flags);
+    }
+    template <typename T, typename... Rest>
+    void createModules (ModuleFlags flags = ModuleFlags::DEFAULT) {
+        createModule<T>(flags); createModules<Rest...>(flags);
+    }
+
     // Get list of all active modules.
     const std::vector<ModuleRef>& modules () const;
-
 
     ModuleRef& getModule (const std::string& name);
 private:
