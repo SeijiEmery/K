@@ -37,3 +37,6 @@
 [submodule "ext/readerwriterqueue"]
 	path = ext/readerwriterqueue
 	url = https://github.com/cameron314/readerwriterqueue.git
+[submodule "ext/die-xml"]
+	path = ext/die-xml
+	url = https://github.com/thinlizzy/die-xml.git
