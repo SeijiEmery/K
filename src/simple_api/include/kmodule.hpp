@@ -13,7 +13,7 @@
 //
 enum class ModuleFlags {
     NONE = 0,
-    
+
     // Control whether the onFrame() method is called (or paused).
     RUN_ON_FRAME = 1 << 1, PAUSE_ON_FRAME = 1 << 2,
 
@@ -155,17 +155,18 @@ struct ModuleState {
 
     // Module intercommunication TBD
 
+    // Interfaces for window, thread, and app management
+    const ScreenList*   screens;
+    WindowList          windows;
+    ThreadManager*      threads;
+    ModuleManager*      modules;
+};
+struct FrameState {
     // Frame state (current frame). Non-null; readonly.
     const Time*         time;
     const Mouse*        mouse;
     const Keyboard*     keyboard;
     const GamepadList*  gamepads;
-
-    // Interfaces for window, thread, and app management
-    WindowList          windows;
-    const ScreenList*   screens;
-    ThreadManager*      threads;
-    ModuleManager*      modules;
 };
 struct GLContext {
     // TBD...
@@ -174,8 +175,8 @@ struct GLContext {
 class IModule {
     friend class ModuleManager;
 protected:
-    virtual void init     (ModuleState& state) = 0;
-    virtual void frame    (ModuleState& state) = 0;
+    virtual void init     (ModuleState& state, const FrameState& frame) = 0;
+    virtual void frame    (ModuleState& state, const FrameState& frame) = 0;
     virtual void onGL     (GLContext& context) = 0;     
-    virtual void teardown (ModuleState& state) = 0;
+    virtual void teardown (ModuleState& state, const FrameState& frame) = 0;
 };

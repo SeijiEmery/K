@@ -75,9 +75,9 @@ class GamepadMapper : public IGamepadMapper {
         AxisArray&      axisOutputs
     ) override {
         mapButtons(buttonInputs, buttonOutputs, Mapping::buttons);
-        mapAxis(axisInputs, axisOutputs, Mapping::axes, normalizeTriggers);
-        if (mapTriggerButtons) mapTriggersToButtons(buttons, axes, triggerThreshold);
-        if (mapDpadAxes)       mapDpadButtonsToAxes(buttons, axes);
+        mapAxis(axisInputs, axisOutputs, Mapping::axes, Mapping::normalizeTriggers);
+        if (Mapping::createTriggerButtons) mapTriggersToButtons(buttons, axes, triggerThreshold);
+        if (Mapping::createDpadAxes)       mapDpadButtonsToAxes(buttons, axes);
     }
 
     //
@@ -139,6 +139,9 @@ class GamepadMapper : public IGamepadMapper {
 struct DS4Mapping {
     static constexpr std::string  name = "DS4";
     static constexpr GamepadFlags flags = GamepadFlags::IS_PS_LIKE;
+    static constexpr bool normalizeTriggers = false;
+    static constexpr bool createTriggerButtons = false;
+    static constexpr bool createDpadAxes = true;
     static std::array<GamepadButton, 18> buttons {
         GamepadButton::X,  // square
         GamepadButton::A,  // x
