@@ -1,0 +1,50 @@
+kscene "scene01"
+    version = 1.14
+    paths.PROJECT = "../"
+    paths.ASSETS  = "../assets/"
+    paths.DATA_CACHE = "${USER_DATA_DIR}/kproj/cache/scene01/"
+assets
+    mesh dragon
+        path   = "${ASSETS}/**/dragon.kasset"
+        scale  = 1.0
+        origin = 0,-10,0
+
+    material dragon
+        path   = "${ASSETS}/**/dragon.kmaterial"
+
+    module camera_controller
+        path   = "${PROJECT}/**/myTestScene/**/CameraController.kmodule"
+        active = true
+
+entities
+    entity dragon
+        transform pos=(0,0,0) rot_degrees=(180,0,45)
+        mesh     asset=dragon static = true
+        material asset=dragon
+
+    entity camera_controller
+        module camera_controller
+            link
+                .mainCamera = camera
+
+    entity camera
+        camera   type = "perspective" fov=60.0 near = 0.0 far = 100.0
+        transform pos = (-10,0,0) rot_degrees=(0,0,0)
+
+permissions
+    group default
+        lock camera:camera.all
+        lock camera:transform.all
+    group
+        member camera_controller
+        unlock camera:camera.all
+        unlock camera:transform.all
+        
+        constrain camera:camera.type = either "perspective" | "ortho"
+        constrain camera:camera.fov  = range [ 0.0, 120.0 ]
+        constrain camera:camera.near >= 0.0
+        constrain camera:camera.near <= camera:camera.far
+        constrain camera:camera.far  <= 1000.0
+
+        # Realistically, we'd be using settings like this:
+        constrain camera:transform.pos.z = 0

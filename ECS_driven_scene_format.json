@@ -1,0 +1,33 @@
+{
+    "config": {
+        "version": "0.1.01",
+        "paths":{
+            "PROJECT":"../",
+            "ASSETS": "../assets/",
+        }
+    },
+    "assets": [
+        {"id":124098123,"type":"module","path":"${MODULE_SRC}/test1/window_controller/config.kmodule"},
+        {"id":102981123,
+            "type":"mesh",
+            "preload":true,
+            "src_data":{"path":"${ASSETS}/models/dragon/dragon.obj","timestamp":"...","sha1":"2470eb1b9f729ed0faa6888fae541a4a0e757182","size":"13201532"},
+            "src_config":{"path":"${ASSETS}/models/dragon/dragon.kasset","timestamp":"...","sha1":"...","size":"..."},
+            "cached_data":{"path":"${DATA_CACHE}/data/2470eb1b9f729ed0faa6888fae541a4a0e757182.kmesh","timestamp":"...","sha1":"...","size":"..."},
+        },
+    ],
+    "scene": [
+        {"id":2104809,"window":{"width":1024,"height":768,"scale":"auto"},"frame":{"width":1024,"height":768,"listen_all":true}},
+        {"id":1231411,"module":{"asset":124098123,"save":"${SAVE_DATA}/${MODULE_NAME}/autosave.json","active":true}},
+        {"id":1023980,
+            "transform":{
+                "pos":{"x":-124.15e9,"y":123.2745,"z":0.01e-3},
+                "scale":1.00,
+                "rot_degrees":{"x":-180,"y":0,"z":45},
+                "parent":1203901,
+            },
+            "mesh":{"asset":102981,"origin":{"x":0,"y":0,"z":0},"scale":0.45,"rot_degrees":0},
+            "sphere_collider_2d":{"origin":0,"radius":"MATCH_MESH_EXTENTS"},
+        }
+    ],
+}
